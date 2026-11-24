@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: khlbot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.web:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: JOB_TOKEN
+        generateValue: true
+      - key: TIMEZONE
+        value: Europe/Moscow

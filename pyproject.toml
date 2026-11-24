@@ -1,0 +1,10 @@
+[project]
+name = "khlbot"
+version = "1.0.0"
+description = "Telegram bot for KHL fixtures and notifications"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
