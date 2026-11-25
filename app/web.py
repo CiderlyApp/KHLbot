@@ -11,7 +11,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.types import Update
-
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from app.config import get_settings
 from app.db.base import configure_database
 from app.logging_setup import configure_logging
