@@ -50,42 +50,81 @@ def _score(item: dict, side: str):
     return None
 
 
+
 def parse_matches(payload, timezone_name: str = "Europe/Moscow") -> list[Match]:
-    """Parse API envelopes defensively; unknown records are skipped, not fabricated."""
+    """Parse KHL Webcaster event envelopes into normalized matches."""
     tz = ZoneInfo(timezone_name)
+
     if isinstance(payload, dict):
         rows = _first(payload, "events", "data", "items", "results", default=[])
         if isinstance(rows, dict):
             rows = _first(rows, "events", "items", "data", default=[])
     else:
         rows = payload
+
     if not isinstance(rows, list):
+        logger.warning("Unexpected KHL API payload type: %s", type(rows).__name__)
         return []
+
     matches = []
-    for item in rows:
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+
+        # Webcaster events_v2.json wraps each match in the "event" field.
+        item = row.get("event", row)
         if not isinstance(item, dict):
             continue
+
         start_at = _parse_start(item, tz)
+
         home = _first(item, "team_a", "home_team", "home_name", "team_a_name", "home")
         away = _first(item, "team_b", "away_team", "visitor_name", "team_b_name", "away")
+
         if isinstance(home, dict):
             home = _first(home, "name", "title", "full_name")
         if isinstance(away, dict):
             away = _first(away, "name", "title", "full_name")
+
         if not start_at or not home or not away:
             continue
+
         match_id = _first(item, "id", "event_id", "khl_id", "match_id")
         if match_id is None:
             match_id = f"{start_at.isoformat()}:{home}:{away}"
-        status_value = _first(item, "status", "status_name", "game_state_key", "game_state")
-        status = "Завершён" if status_value == "finished" else str(status_value or "Запланирован")
+
+        status_value = _first(
+            item, "status", "status_name", "game_state_key", "game_state"
+        )
+        status = "Завершён" if status_value == "finished" else str(
+            status_value or "Запланирован"
+        )
+
         arena = _first(item, "arena", "arena_name", "venue")
-        matches.append(Match(
-            id=str(match_id), start_at=start_at, home=str(home), away=str(away),
-            home_score=_score(item, "a"), away_score=_score(item, "b"),
-            status=status, arena=str(arena) if arena else None,
-        ))
+
+        matches.append(
+            Match(
+                id=str(match_id),
+                start_at=start_at,
+                home=str(home),
+                away=str(away),
+                home_score=_score(item, "a"),
+                away_score=_score(item, "b"),
+                status=status,
+                arena=str(arena) if arena else None,
+            )
+        )
+
+    logger.info(
+        "KHL parser: received=%d, parsed=%d, skipped=%d",
+        len(rows),
+        len(matches),
+        len(rows) - len(matches),
+    )
+
     return sorted(matches, key=lambda match: match.start_at)
+
 
 
 class KHLApiClient:
